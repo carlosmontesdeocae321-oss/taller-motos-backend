@@ -72,6 +72,58 @@ class ApiClient {
     return resp.data as Map<String, dynamic>;
   }
 
+  /// Upload a local file to Cloudinary using a signed upload flow.
+  /// Calls backend `/cloudinary-sign` to obtain signature and timestamp.
+  /// Returns the Cloudinary response JSON (contains `secure_url`).
+  Future<Map<String, dynamic>> uploadToCloudinarySigned(File file) async {
+    // 1) Request signature from backend
+    final signResp = await dio.get('/cloudinary-sign');
+    if (signResp.statusCode != 200) {
+      throw Exception('Could not get Cloudinary signature');
+    }
+    final sigJson = signResp.data as Map<String, dynamic>;
+    final signature = sigJson['signature'];
+    final timestamp = sigJson['timestamp'].toString();
+    final apiKey = sigJson['api_key'];
+    final cloudName = sigJson['cloud_name'];
+
+    final fileName = p.basename(file.path);
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(file.path, filename: fileName),
+      'api_key': apiKey,
+      'timestamp': timestamp,
+      'signature': signature,
+      'folder': 'taller-motos/uploads',
+    });
+
+    final cloudUrl = 'https://api.cloudinary.com/v1_1/$cloudName/image/upload';
+    final resp = await Dio().post(cloudUrl, data: formData);
+    if (resp.statusCode == 200) {
+      return resp.data as Map<String, dynamic>;
+    } else {
+      throw Exception('Cloudinary upload failed: ${resp.statusCode}');
+    }
+  }
+
+  /// Upload a local file to Cloudinary using an unsigned preset.
+  /// Provide the `uploadPreset` name that you created in Cloudinary dashboard.
+  Future<Map<String, dynamic>> uploadToCloudinaryUnsigned(
+      File file, String uploadPreset, String cloudName) async {
+    final fileName = p.basename(file.path);
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(file.path, filename: fileName),
+      'upload_preset': uploadPreset,
+      'folder': 'taller-motos/uploads',
+    });
+    final cloudUrl = 'https://api.cloudinary.com/v1_1/$cloudName/image/upload';
+    final resp = await Dio().post(cloudUrl, data: formData);
+    if (resp.statusCode == 200) {
+      return resp.data as Map<String, dynamic>;
+    } else {
+      throw Exception('Cloudinary unsigned upload failed: ${resp.statusCode}');
+    }
+  }
+
   Future<Map<String, dynamic>> updateService(
       int id, Map<String, dynamic> body) async {
     final resp = await dio.put('/services/$id', data: body);

@@ -225,7 +225,23 @@ class _MotoDetailScreenState extends State<MotoDetailScreen> {
           'costo': costo,
         };
         if (imagePath != null) {
-          await widget.apiClient.createServiceWithImage(body, imagePath);
+          // Upload image to Cloudinary (signed) then create service with returned secure_url
+          try {
+            final file = File(imagePath);
+            final uploadRes =
+                await widget.apiClient.uploadToCloudinarySigned(file);
+            final secureUrl = uploadRes['secure_url'] as String?;
+            if (secureUrl != null) body['image_path'] = secureUrl;
+            await widget.apiClient.createService(body);
+          } catch (e) {
+            // Fallback: try to create service using the backend multipart endpoint
+            try {
+              await widget.apiClient.createServiceWithImage(body, imagePath);
+            } catch (e2) {
+              throw Exception(
+                  'Error subiendo imagen: $e ; fallback error: $e2');
+            }
+          }
         } else {
           await widget.apiClient.createService(body);
         }
@@ -330,7 +346,10 @@ class _MotoDetailScreenState extends State<MotoDetailScreen> {
                             s['completed'] == '1');
                         final imagePath = s['image_path'] as String?;
                         final imageUrl = imagePath != null
-                            ? (widget.apiClient.dio.options.baseUrl + imagePath)
+                            ? (imagePath.startsWith('http')
+                                ? imagePath
+                                : (widget.apiClient.dio.options.baseUrl +
+                                    imagePath))
                             : null;
                         return Card(
                           color: completed ? Colors.grey[200] : null,

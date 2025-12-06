@@ -62,6 +62,16 @@ const UPLOADS_DIR = path.join(__dirname, 'uploads');
 const SERVICES_UPLOAD_DIR = path.join(UPLOADS_DIR, 'services');
 if (!fs.existsSync(SERVICES_UPLOAD_DIR)) fs.mkdirSync(SERVICES_UPLOAD_DIR, { recursive: true });
 
+// Cloudinary helper (optional)
+const cloudinaryHelper = require('./lib/cloudinary');
+let cloudinaryEnabled = false;
+try {
+  cloudinaryEnabled = cloudinaryHelper.initCloudinaryFromEnv();
+  if (cloudinaryEnabled) console.log('Cloudinary enabled for image uploads');
+} catch (e) {
+  cloudinaryEnabled = false;
+}
+
 // Date formatting helper: returns 'Sábado YYYY-MM-DD'
 function formatDateSpanish(dateInput) {
   try {
@@ -123,7 +133,13 @@ try {
       cb(null, safe);
     }
   });
-  upload = multer({ storage });
+  // file filter: only allow common image types
+  function imageFileFilter(req, file, cb) {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Only image files are allowed'), false);
+  }
+  upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: imageFileFilter });
   uploadEnabled = true;
 } catch (e) {
   console.warn('multer not installed — image upload disabled');
@@ -134,6 +150,34 @@ const uploadMiddleware = uploadEnabled ? upload.single('image') : (req, res, nex
 
 // serve uploads statically
 app.use('/uploads', express.static(UPLOADS_DIR));
+
+// Additional upload endpoint: upload any file and return Cloudinary result (or local path)
+app.post('/upload', uploadMiddleware, async (req, res) => {
+  try {
+    const ct = req.headers['content-type'] || '';
+    if (!uploadEnabled && typeof ct === 'string' && ct.includes('multipart/form-data')) {
+      return res.status(503).json({ error: 'Server is not accepting file uploads (multer not installed).' });
+    }
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded (use field name `file`)' });
+    // upload to cloudinary if configured
+    if (cloudinaryEnabled && req.file && req.file.path) {
+      try {
+        const uploadRes = await cloudinaryHelper.uploadLocalFile(req.file.path, { folder: 'taller-motos/uploads' });
+        try { fs.unlinkSync(req.file.path); } catch (er) {}
+        return res.json({ ok: true, cloudinary: uploadRes });
+      } catch (e) {
+        console.warn('Cloudinary upload error:', e.message);
+        return res.status(500).json({ error: 'Cloudinary upload failed', details: e.message });
+      }
+    }
+    // fallback: return local path
+    const localPath = `/uploads/services/${req.file.filename}`;
+    res.json({ ok: true, localPath });
+  } catch (err) {
+    console.error('Upload error', err);
+    res.status(500).json({ error: 'error handling upload' });
+  }
+});
 
 // Swagger / OpenAPI
 let swaggerDoc;
@@ -308,10 +352,25 @@ app.post('/services', uploadMiddleware, [
   const { id_moto, descripcion, fecha, costo } = req.body;
   const completed = req.body.completed ? 1 : 0;
   let imagePath = null;
-  if (req.file) {
-    // store relative path for serving
-    imagePath = `/uploads/services/${req.file.filename}`;
-  }
+    if (req.file) {
+      // If Cloudinary configured, upload the local file and store the remote URL
+      try {
+        if (cloudinaryEnabled && req.file && req.file.path) {
+          const uploadRes = await cloudinaryHelper.uploadLocalFile(req.file.path, { folder: 'taller-motos/services' });
+          if (uploadRes && uploadRes.secure_url) {
+            imagePath = uploadRes.secure_url;
+          }
+          // remove local file after upload
+          try { fs.unlinkSync(req.file.path); } catch (er) {}
+        } else {
+          // store relative path for serving
+          imagePath = `/uploads/services/${req.file.filename}`;
+        }
+      } catch (e) {
+        console.warn('Error uploading to Cloudinary, falling back to local file:', e.message);
+        imagePath = `/uploads/services/${req.file.filename}`;
+      }
+    }
   try {
     const result = await execute('INSERT INTO servicios (id_moto, descripcion, fecha, costo, completed, image_path) VALUES (?, ?, ?, ?, ?, ?)', [id_moto, descripcion, fecha, costo, completed, imagePath]);
     res.json({ id_servicio: result.insertId });
@@ -491,6 +550,17 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 // Features: report whether uploads are enabled
 app.get('/features', (req, res) => {
   res.json({ uploadEnabled });
+});
+
+// Cloudinary signature endpoint (useful for client-side signed uploads)
+app.get('/cloudinary-sign', (req, res) => {
+  if (!cloudinaryEnabled) return res.status(503).json({ error: 'Cloudinary not configured' });
+  try {
+    const sig = cloudinaryHelper.generateSignature({});
+    res.json(sig);
+  } catch (e) {
+    res.status(500).json({ error: 'Could not generate signature', details: e.message });
+  }
 });
 
 // Ensure migrations then start server
