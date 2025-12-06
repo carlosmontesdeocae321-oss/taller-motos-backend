@@ -1,0 +1,27 @@
+{
+  "name": "moreira-taller-backend",
+  "version": "0.1.0",
+  "description": "Backend simple para Taller de Motos — Express + MySQL + PDF",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "init-db": "node scripts/init-db.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.1",
+    "morgan": "^1.10.0",
+    "multer": "^2.0.2",
+    "mysql2": "^3.3.0",
+    "pdfkit": "^0.13.0",
+    "swagger-ui-express": "^4.6.3",
+    "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}

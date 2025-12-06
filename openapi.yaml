@@ -1,0 +1,247 @@
+openapi: 3.0.0
+info:
+  title: Taller de Motos Moreira API
+  version: '0.1.0'
+  description: API para gestionar clientes, motos, servicios y facturas (PDF)
+servers:
+  - url: http://localhost:3000
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+  /clients:
+    get:
+      summary: List clients
+      responses:
+        '200':
+          description: A list of clients
+    post:
+      summary: Create client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientInput'
+      responses:
+        '200':
+          description: Created client id
+  /clients/{id}:
+    get:
+      summary: Get client by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Client object
+    put:
+      summary: Update client
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientInput'
+      responses:
+        '200':
+          description: Update result
+    delete:
+      summary: Delete client
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Delete result
+  /motos:
+    get:
+      summary: List motos
+      responses:
+        '200':
+          description: A list of motos
+    post:
+      summary: Create moto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MotoInput'
+      responses:
+        '200':
+          description: Created moto id
+  /motos/{id}:
+    get:
+      summary: Get moto by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Moto object
+    put:
+      summary: Update moto
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MotoInput'
+      responses:
+        '200':
+          description: Update result
+    delete:
+      summary: Delete moto
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Delete result
+  /services:
+    get:
+      summary: List services
+      responses:
+        '200':
+          description: A list of services
+    post:
+      summary: Create service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceInput'
+      responses:
+        '200':
+          description: Created service id
+  /services/{id}:
+    get:
+      summary: Get service by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Service object
+    put:
+      summary: Update service
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceInput'
+      responses:
+        '200':
+          description: Update result
+    delete:
+      summary: Delete service
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Delete result
+  /invoices:
+    post:
+      summary: Generate invoice (PDF)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id_servicio:
+                  type: integer
+      responses:
+        '200':
+          description: PDF file download
+components:
+  schemas:
+    ClientInput:
+      type: object
+      properties:
+        nombre:
+          type: string
+        telefono:
+          type: string
+        direccion:
+          type: string
+      required:
+        - nombre
+    MotoInput:
+      type: object
+      properties:
+        id_cliente:
+          type: integer
+        marca:
+          type: string
+        modelo:
+          type: string
+        anio:
+          type: integer
+        placa:
+          type: string
+      required:
+        - id_cliente
+        - marca
+        - modelo
+    ServiceInput:
+      type: object
+      properties:
+        id_moto:
+          type: integer
+        descripcion:
+          type: string
+        fecha:
+          type: string
+          format: date
+        costo:
+          type: number
+      required:
+        - id_moto
+        - descripcion
+        - fecha
+        - costo

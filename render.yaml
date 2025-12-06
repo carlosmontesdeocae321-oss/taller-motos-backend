@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: taller-motos-backend
+    env: docker
+    branch: main
+    dockerfilePath: Dockerfile
+    plan: free
+    autoDeploy: true
+    buildCommand: ""
+    startCommand: ""
+    healthCheckPath: "/features"
