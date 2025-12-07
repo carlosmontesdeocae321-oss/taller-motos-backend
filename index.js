@@ -577,16 +577,14 @@ app.post('/invoices', [
       const dateOnly = (s.fecha || '').toString().split('T')[0].split(' ')[0].substring(0,10);
       const displayDate = formatDateSpanish(dateOnly);
 
-      // Description left
-      doc.font('Helvetica').fontSize(10).fillColor('#000').text(`${idx+1}. ${s.descripcion || '-'}`, 50, y, { width: 360 });
-      // Date and price to the right
-      doc.font('Helvetica').fontSize(9).fillColor('#444').text(`Fecha: ${displayDate}`, 420, y);
-      doc.font('Helvetica').fontSize(10).fillColor('#000').text(`Precio: $ ${costo.toFixed(2)}`, 420, y + 14);
-
-      // If an image exists for this service, try to embed a thumbnail at the right
+      // If an image exists for this service, try to embed a thumbnail at the left
       let usedThumbnail = false;
-      if (s.image_path) {
-        try {
+      let thumbWidth = 80;
+      let thumbHeight = 60;
+      let thumbX = 50;
+      let textX = 50;
+      try {
+        if (s.image_path) {
           const imgs = ('' + s.image_path).split(',').map(p => p.trim()).filter(Boolean);
           const firstImg = imgs[0];
           if (firstImg) {
@@ -599,16 +597,26 @@ app.post('/invoices', [
             }
             if (buf) {
               try {
-                doc.image(buf, 480, y - 4, { width: 80, height: 60 });
+                // draw thumbnail on the left column
+                doc.image(buf, thumbX + 10, y - 4, { width: thumbWidth, height: thumbHeight });
                 usedThumbnail = true;
+                // text should start after thumbnail + padding
+                textX = thumbX + thumbWidth + 24;
               } catch (e) { console.warn('Draw thumb failed', e && e.message ? e.message : e); }
             }
           }
-        } catch (ie) { console.warn('Image processing error for service', s.id_servicio, ie && ie.message ? ie.message : ie); }
-      }
+        }
+      } catch (ie) { console.warn('Image processing error for service', s.id_servicio, ie && ie.message ? ie.message : ie); }
+
+      // Description left (shifted if thumbnail present)
+      const descWidth = usedThumbnail ? 360 - thumbWidth : 360;
+      doc.font('Helvetica').fontSize(10).fillColor('#000').text(`${idx+1}. ${s.descripcion || '-'}`, textX, y, { width: descWidth });
+      // Date and price to the right
+      doc.font('Helvetica').fontSize(9).fillColor('#444').text(`Fecha: ${displayDate}`, 420, y);
+      doc.font('Helvetica').fontSize(10).fillColor('#000').text(`Precio: $ ${costo.toFixed(2)}`, 420, y + 14);
 
       // advance Y: leave extra space if thumbnail drawn
-      y += usedThumbnail ? 76 : 34;
+      y += usedThumbnail ? Math.max(thumbHeight + 18, 76) : 34;
       if (y > 700) { doc.addPage(); y = 50; }
     }
 
