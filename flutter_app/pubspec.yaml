@@ -27,3 +27,7 @@ flutter_icons:
   android: true
   ios: true
   image_path: "assets/logo.png"
+  
+# Include app assets so logo is bundled in release APK
+  assets:
+    - assets/logo.png

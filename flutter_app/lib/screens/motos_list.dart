@@ -438,31 +438,27 @@ class _MotosListScreenState extends State<MotosListScreen> {
   Widget build(BuildContext context) {
     // try to load logo from backend assets folder: ../assets/logo.png
     Widget titleWidget;
-    final logoPath = Directory.current.path + '/../assets/logo.png';
-    if (File(logoPath).existsSync()) {
+      // Prefer the bundled asset for the logo; fall back to file during desktop dev
+      Widget logoWidget;
+      try {
+        logoWidget = Image.asset('assets/logo.png', width: 180, height: 80, fit: BoxFit.contain);
+      } catch (e) {
+        final logoPath = Directory.current.path + '/../assets/logo.png';
+        if (File(logoPath).existsSync()) {
+          logoWidget = Image.file(File(logoPath), width: 180, height: 80, fit: BoxFit.contain);
+        } else {
+          logoWidget = SizedBox.shrink();
+        }
+      }
       titleWidget = Row(
         children: [
-          SizedBox(
-              width: 40,
-              height: 40,
-              child: Image.file(File(logoPath), fit: BoxFit.contain)),
+          logoWidget,
           SizedBox(width: 12),
           Text('Motos', style: TextStyle(color: Colors.black)),
         ],
       );
-    } else {
-      titleWidget = Row(
-        children: [
-          CircleAvatar(
-              backgroundColor: Colors.deepPurpleAccent,
-              child: Icon(Icons.motorcycle, color: Colors.white)),
-          SizedBox(width: 12),
-          Text('Motos', style: TextStyle(color: Colors.black)),
-        ],
-      );
-    }
 
-    return Scaffold(
+      return Scaffold(
       appBar: AppBar(
         title: titleWidget,
         centerTitle: false,
