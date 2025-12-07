@@ -30,21 +30,30 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Moreira Taller',
       theme: ThemeData(
+        useMaterial3: false,
         brightness: Brightness.dark,
-        primarySwatch: Colors.deepPurple,
-        scaffoldBackgroundColor: const Color(0xFF2B2F33), // slightly dark
-        appBarTheme: AppBarTheme(
-          backgroundColor: const Color(0xFF232629),
+        colorScheme: ColorScheme.dark(
+          primary: const Color(0xFF6D3BFF),
+          secondary: const Color(0xFFFFB86B),
+          surface: const Color(0xFF2F3438),
+          background: const Color(0xFF222528),
+        ),
+        scaffoldBackgroundColor: const Color(0xFF1F2224),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF26292B),
           foregroundColor: Colors.white,
-          elevation: 0,
+          elevation: 1,
+          centerTitle: false,
         ),
         cardTheme: CardTheme(
-          color: const Color(0xFF33373B),
+          color: const Color(0xFF2B2F33),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          elevation: 2,
-          margin: EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+          elevation: 3,
+          margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
         ),
+        listTileTheme: const ListTileThemeData(
+            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
         textTheme: ThemeData.dark()
             .textTheme
             .apply(bodyColor: Colors.white70, displayColor: Colors.white70),
@@ -52,10 +61,21 @@ class MyApp extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            padding: EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-            backgroundColor: Colors.deepPurple,
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
+            backgroundColor: const Color(0xFF6D3BFF),
           ),
         ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFF26292B),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none),
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+            backgroundColor: Color(0xFF6D3BFF)),
       ),
       home: MainScreen(apiClient: apiClient),
     );

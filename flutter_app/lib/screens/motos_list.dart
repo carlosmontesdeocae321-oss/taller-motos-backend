@@ -488,39 +488,72 @@ class _MotosListScreenState extends State<MotosListScreen> {
                     elevation: 2,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.deepPurple.shade100,
-                        child: Text(m.marca.isNotEmpty ? m.marca[0] : '?'),
-                      ),
-                      title: Text('${m.marca} ${m.modelo}',
-                          style: TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text(
-                          'Placa: ${m.placa ?? '-'}\nCliente: ${m.clienteNombre ?? m.idCliente}'),
-                      isThreeLine: true,
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          TextButton(
-                            child: Text('Servicio'),
-                            onPressed: () => _openServiceDialog(m),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.edit, color: Colors.blueGrey),
-                            onPressed: () => _openEditMotoDialog(m),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.delete, color: Colors.redAccent),
-                            onPressed: () => _deleteMoto(m),
-                          ),
-                          Icon(Icons.chevron_right),
-                        ],
-                      ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(10),
                       onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => MotoDetailScreen(
-                                moto: m, apiClient: widget.apiClient)),
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => MotoDetailScreen(
+                                  moto: m, apiClient: widget.apiClient))),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 12),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 26,
+                              backgroundColor: Colors.deepPurple.shade100,
+                              child: Text(m.marca.isNotEmpty ? m.marca[0] : '?',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white)),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('${m.marca} ${m.modelo}',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 16)),
+                                    const SizedBox(height: 6),
+                                    Text('Placa: ${m.placa ?? '-'}',
+                                        style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 13)),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                        'Cliente: ${m.clienteNombre ?? m.idCliente}',
+                                        style: TextStyle(
+                                            color: Colors.white60,
+                                            fontSize: 13)),
+                                  ]),
+                            ),
+                            Column(mainAxisSize: MainAxisSize.min, children: [
+                              ElevatedButton.icon(
+                                  onPressed: () => _openServiceDialog(m),
+                                  icon: const Icon(Icons.add, size: 16),
+                                  label: const Text('Servicio'),
+                                  style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 8),
+                                      textStyle:
+                                          const TextStyle(fontSize: 12))),
+                              const SizedBox(height: 8),
+                              Row(children: [
+                                IconButton(
+                                    icon: const Icon(Icons.edit,
+                                        color: Colors.white70),
+                                    onPressed: () => _openEditMotoDialog(m)),
+                                IconButton(
+                                    icon: const Icon(Icons.delete,
+                                        color: Colors.redAccent),
+                                    onPressed: () => _deleteMoto(m)),
+                              ])
+                            ])
+                          ],
+                        ),
                       ),
                     ),
                   ),

@@ -55,6 +55,16 @@ class ApiClient {
     return resp.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> getClient(int id) async {
+    final resp = await dio.get('/clients/$id');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getMoto(int id) async {
+    final resp = await dio.get('/motos/$id');
+    return resp.data as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> createService(Map<String, dynamic> body) async {
     final resp = await dio.post('/services', data: body);
     return resp.data as Map<String, dynamic>;
@@ -127,6 +137,24 @@ class ApiClient {
   Future<Map<String, dynamic>> updateService(
       int id, Map<String, dynamic> body) async {
     final resp = await dio.put('/services/$id', data: body);
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getService(int id) async {
+    final resp = await dio.get('/services/$id');
+    return resp.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> updateServiceWithImage(
+      int id, Map<String, dynamic> body, String imagePath) async {
+    final fileName = p.basename(imagePath);
+    final form = FormData.fromMap({
+      ...body,
+      'image': await MultipartFile.fromFile(imagePath, filename: fileName),
+    });
+    // Use PUT with multipart/form-data; some servers accept it
+    final resp = await dio.put('/services/$id',
+        data: form, options: Options(contentType: 'multipart/form-data'));
     return resp.data as Map<String, dynamic>;
   }
 

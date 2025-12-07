@@ -403,7 +403,7 @@ app.get('/services/:id', async (req, res) => {
   }
 });
 
-app.put('/services/:id', [
+app.put('/services/:id', uploadMiddleware, [
   param('id').isInt().withMessage('invalid id'),
   body('id_moto').optional().isInt().withMessage('id_moto must be integer'),
   body('descripcion').optional().isString(),
@@ -416,8 +416,60 @@ app.put('/services/:id', [
   const { id_moto, descripcion, fecha, costo } = req.body;
   const completed = req.body.completed !== undefined ? (req.body.completed ? 1 : 0) : null;
   try {
-    const result = await execute('UPDATE servicios SET id_moto = ?, descripcion = ?, fecha = ?, costo = ?, completed = COALESCE(?, completed) WHERE id_servicio = ?', [id_moto, descripcion, fecha, costo, completed, id]);
-    res.json({ affectedRows: result.affectedRows });
+    // handle image updates: allow client to provide new image (multipart) or set image_path explicitly
+    let imagePath = null;
+    // if client sent an explicit image_path (after removing some images), honor it
+    if (req.body.image_path) {
+      imagePath = req.body.image_path;
+    }
+
+    // If a file was uploaded, process it: upload to cloudinary if configured, else store local path
+    if (req.file) {
+      try {
+        if (cloudinaryEnabled && req.file && req.file.path) {
+          const uploadRes = await cloudinaryHelper.uploadLocalFile(req.file.path, { folder: 'taller-motos/services' });
+          if (uploadRes && uploadRes.secure_url) {
+            const newUrl = uploadRes.secure_url;
+            // append to existing imagePath if present, otherwise set to newUrl
+            if (imagePath && imagePath.length > 0) imagePath = imagePath + ',' + newUrl;
+            else {
+              // fetch existing path to append
+              try {
+                const rows = await query('SELECT image_path FROM servicios WHERE id_servicio = ?', [id]);
+                const existing = (rows && rows[0] && rows[0].image_path) ? rows[0].image_path : null;
+                imagePath = existing ? existing + ',' + newUrl : newUrl;
+              } catch (ee) {
+                imagePath = newUrl;
+              }
+            }
+          }
+          try { fs.unlinkSync(req.file.path); } catch (er) {}
+        } else {
+          const localPath = `/uploads/services/${req.file.filename}`;
+          if (imagePath && imagePath.length > 0) imagePath = imagePath + ',' + localPath;
+          else {
+            try {
+              const rows = await query('SELECT image_path FROM servicios WHERE id_servicio = ?', [id]);
+              const existing = (rows && rows[0] && rows[0].image_path) ? rows[0].image_path : null;
+              imagePath = existing ? existing + ',' + localPath : localPath;
+            } catch (ee) {
+              imagePath = localPath;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Error processing uploaded file for update:', e.message);
+      }
+    }
+
+    // Build update query. If imagePath is null, don't update image_path column.
+    if (imagePath !== null) {
+      const result = await execute('UPDATE servicios SET id_moto = ?, descripcion = ?, fecha = ?, costo = ?, completed = COALESCE(?, completed), image_path = ? WHERE id_servicio = ?', [id_moto, descripcion, fecha, costo, completed, imagePath, id]);
+      res.json({ affectedRows: result.affectedRows });
+    } else {
+      const result = await execute('UPDATE servicios SET id_moto = ?, descripcion = ?, fecha = ?, costo = ?, completed = COALESCE(?, completed) WHERE id_servicio = ?', [id_moto, descripcion, fecha, costo, completed, id]);
+      res.json({ affectedRows: result.affectedRows });
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'error updating service' });

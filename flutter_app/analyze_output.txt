@@ -1,0 +1,13 @@
+﻿Analyzing flutter_app...                                        
+
+warning - The include file 'package:flutter_lints/flutter.yaml' in 'C:\backend\flutter_app\analysis_options.yaml' can't be found when analyzing 'C:\backend\flutter_app' - analysis_options.yaml:10:10 - include_file_not_found
+  error - Target of URI doesn't exist: 'package:flutter_app/main.dart' - test\widget_test.dart:11:8 - uri_does_not_exist
+  error - The name 'MyApp' isn't a class - test\widget_test.dart:16:35 - creation_with_non_type
+
+flutter : 3 issues found. (ran in 3.2s)
+En línea: 1 Carácter: 40
++ Set-Location 'C:\backend\flutter_app'; flutter analyze 2>&1 | Out-Fil ...
++                                        ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (3 issues found. (ran in 3.2s):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
