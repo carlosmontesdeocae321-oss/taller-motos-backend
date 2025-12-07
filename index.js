@@ -599,6 +599,17 @@ app.post('/invoices', [
 // Health
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
+// DB connectivity check (diagnostic endpoint)
+app.get('/db-check', async (req, res) => {
+  try {
+    const rows = await query('SELECT 1 AS ok');
+    res.json({ ok: true, rows });
+  } catch (e) {
+    console.error('DB check failed:', e && e.stack ? e.stack : e);
+    res.status(500).json({ ok: false, error: e.message || String(e), stack: e.stack });
+  }
+});
+
 // Features: report whether uploads are enabled
 app.get('/features', (req, res) => {
   res.json({ uploadEnabled });
