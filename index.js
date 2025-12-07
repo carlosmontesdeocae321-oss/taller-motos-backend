@@ -527,8 +527,20 @@ app.post('/invoices', [
     }
 
     // generate single PDF that matches factura_13 layout
-    const invoiceId = Date.now();
-    const filename = `factura_${invoiceId}.pdf`;
+    function nextHistFilename() {
+      try {
+        const files = fs.readdirSync(INVOICES_DIR);
+        // prefer 'historial.pdf' if available
+        if (!files.includes('historial.pdf')) return 'historial.pdf';
+        let i = 1;
+        while (files.includes(`historial${i}.pdf`)) i++;
+        return `historial${i}.pdf`;
+      } catch (e) {
+        // fallback to timestamped name if invoices dir unreadable
+        return `historial_${Date.now()}.pdf`;
+      }
+    }
+    const filename = nextHistFilename();
     const filepath = path.join(INVOICES_DIR, filename);
 
     const doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true });
