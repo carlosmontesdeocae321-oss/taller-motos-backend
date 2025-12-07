@@ -521,6 +521,7 @@ app.post('/invoices', [
 ], async (req, res) => {
   // body: { id_servicio } OR { id_moto } OR { id_servicios: [..] }
   const { id_servicio, id_moto, id_servicios } = req.body;
+  console.log('POST /invoices called with body:', JSON.stringify(req.body));
   try {
     let services = [];
     if (id_servicio) {
@@ -534,6 +535,7 @@ app.post('/invoices', [
       return res.status(400).json({ error: 'Provide id_servicio or id_moto or id_servicios' });
     }
 
+    console.log('Found services for invoice:', services && services.length);
     if (!services || services.length === 0) return res.status(404).json({ error: 'service(s) not found' });
 
     // helper: fetch remote image into a buffer (kept for potential future thumbnails)
