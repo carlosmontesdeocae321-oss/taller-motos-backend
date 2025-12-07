@@ -577,11 +577,38 @@ app.post('/invoices', [
       const dateOnly = (s.fecha || '').toString().split('T')[0].split(' ')[0].substring(0,10);
       const displayDate = formatDateSpanish(dateOnly);
 
-      doc.font('Helvetica').fontSize(10).fillColor('#000').text(`${idx+1}. ${s.descripcion || '-'}`, 50, y, { width: 340 });
+      // Description left
+      doc.font('Helvetica').fontSize(10).fillColor('#000').text(`${idx+1}. ${s.descripcion || '-'}`, 50, y, { width: 360 });
+      // Date and price to the right
       doc.font('Helvetica').fontSize(9).fillColor('#444').text(`Fecha: ${displayDate}`, 420, y);
-      y += 12;
-      doc.font('Helvetica').fontSize(10).fillColor('#000').text(`Precio: $ ${costo.toFixed(2)}`, 420, y);
-      y += 18;
+      doc.font('Helvetica').fontSize(10).fillColor('#000').text(`Precio: $ ${costo.toFixed(2)}`, 420, y + 14);
+
+      // If an image exists for this service, try to embed a thumbnail at the right
+      let usedThumbnail = false;
+      if (s.image_path) {
+        try {
+          const imgs = ('' + s.image_path).split(',').map(p => p.trim()).filter(Boolean);
+          const firstImg = imgs[0];
+          if (firstImg) {
+            let buf = null;
+            if (firstImg.startsWith('http://') || firstImg.startsWith('https://')) {
+              try { buf = await fetchImageBuffer(firstImg); } catch (e) { console.warn('Fetch img failed', e && e.message ? e.message : e); }
+            } else {
+              const local = path.join(__dirname, firstImg.startsWith('/') ? '.' + firstImg : firstImg);
+              try { if (fs.existsSync(local)) buf = fs.readFileSync(local); } catch (e) { console.warn('Read local img failed', e && e.message ? e.message : e); }
+            }
+            if (buf) {
+              try {
+                doc.image(buf, 480, y - 4, { width: 80, height: 60 });
+                usedThumbnail = true;
+              } catch (e) { console.warn('Draw thumb failed', e && e.message ? e.message : e); }
+            }
+          }
+        } catch (ie) { console.warn('Image processing error for service', s.id_servicio, ie && ie.message ? ie.message : ie); }
+      }
+
+      // advance Y: leave extra space if thumbnail drawn
+      y += usedThumbnail ? 76 : 34;
       if (y > 700) { doc.addPage(); y = 50; }
     }
 
