@@ -512,6 +512,20 @@ app.post('/invoices', [
 
     if (!services || services.length === 0) return res.status(404).json({ error: 'service(s) not found' });
 
+    // helper: fetch remote image into a buffer
+    function fetchImageBuffer(url) {
+      return new Promise((resolve, reject) => {
+        try {
+          const client = url.startsWith('https') ? require('https') : require('http');
+          client.get(url, (resp) => {
+            const chunks = [];
+            resp.on('data', (chunk) => chunks.push(chunk));
+            resp.on('end', () => resolve(Buffer.concat(chunks)));
+          }).on('error', (err) => reject(err));
+        } catch (e) { reject(e); }
+      });
+    }
+
     // generate single PDF that contains all services
     const invoiceId = Date.now();
     const filename = `factura_${invoiceId}.pdf`;

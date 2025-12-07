@@ -13,9 +13,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Usar BASE_URL desde --dart-define, si no se define usa 10.0.2.2:3000 por defecto
+    // Usar BASE_URL desde --dart-define, si no se define usa el servidor desplegado en Render
     String baseUrl = const String.fromEnvironment('BASE_URL',
-        defaultValue: 'http://10.0.2.2:3000');
+        defaultValue: 'https://taller-motos-backend-uqsf.onrender.com');
     final apiClient = ApiClient(baseUrl);
     return MaterialApp(
       debugShowCheckedModeBanner: false,

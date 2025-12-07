@@ -14,11 +14,13 @@ class MainScreen extends StatelessWidget {
     // Prefer bundled asset (works in APK and desktop). If not bundled, try loading
     // a file from the repo (useful during development on desktop).
     try {
-      logoWidget = Image.asset('assets/logo.png', width: 220, height: 220, fit: BoxFit.contain);
+      logoWidget = Image.asset('assets/logo.png',
+          width: 220, height: 220, fit: BoxFit.contain);
     } catch (e) {
       final logoPath = Directory.current.path + '/../assets/logo.png';
       if (File(logoPath).existsSync()) {
-        logoWidget = Image.file(File(logoPath), width: 220, height: 220, fit: BoxFit.contain);
+        logoWidget = Image.file(File(logoPath),
+            width: 220, height: 220, fit: BoxFit.contain);
       } else {
         logoWidget = CircleAvatar(
             radius: 80,
