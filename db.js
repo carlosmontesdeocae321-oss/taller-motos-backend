@@ -36,6 +36,7 @@ password = process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || password;
 database = process.env.DB_NAME || process.env.MYSQLDATABASE || database;
 
 // Build pool options and optionally enable SSL when requested by env vars
+// Increase timeouts and allow retries during cold-starts or network latency.
 const poolOptions = {
   host,
   port,
@@ -45,6 +46,10 @@ const poolOptions = {
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  // How long to wait for initial connection attempt (ms)
+  connectTimeout: process.env.MYSQL_CONNECT_TIMEOUT ? Number(process.env.MYSQL_CONNECT_TIMEOUT) : 10000,
+  // How long to wait to acquire a connection from the pool (ms)
+  acquireTimeout: process.env.MYSQL_ACQUIRE_TIMEOUT ? Number(process.env.MYSQL_ACQUIRE_TIMEOUT) : 10000,
 };
 
 // Enable SSL when set (useful for managed DB providers that require TLS)
@@ -66,19 +71,40 @@ if (process.env.MYSQL_SSL === 'true' || process.env.DB_SSL === 'true') {
 const pool = mysql.createPool(poolOptions);
 
 // Attempt an initial connection to surface early errors in logs
-async function testConnection() {
-  try {
-    const conn = await pool.getConnection();
-    try { await conn.ping(); } catch (e) {}
-    conn.release();
-    console.log(`MySQL: connected to ${host}:${port}/${database} as ${user}`);
-  } catch (e) {
-    console.error('MySQL connection error:', e.message || e);
+async function testConnection(retries = 5, delayMs = 2000) {
+  // Masked log helper
+  function maskedUser(u) {
+    if (!u) return '??';
+    if (u.length <= 2) return '**';
+    return u[0] + '*'.repeat(Math.max(0, u.length - 2)) + u[u.length - 1];
+  }
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const conn = await pool.getConnection();
+      try { await conn.ping(); } catch (e) {}
+      conn.release();
+      console.log(`MySQL: connected to ${host}:${port}/${database} as ${maskedUser(user)} (attempt ${attempt})`);
+      return;
+    } catch (e) {
+      const msg = (e && e.message) ? e.message : String(e);
+      console.warn(`MySQL connection attempt ${attempt} failed: ${msg}`);
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, delayMs));
+        continue;
+      } else {
+        console.error('MySQL connection error (final):', msg);
+        return;
+      }
+    }
   }
 }
 
 // Run test asynchronously (don't block module export)
-testConnection();
+// Allow configuring retries/timeouts via env if desired
+const _retries = process.env.MYSQL_CONNECT_RETRIES ? Number(process.env.MYSQL_CONNECT_RETRIES) : 5;
+const _delay = process.env.MYSQL_CONNECT_DELAY_MS ? Number(process.env.MYSQL_CONNECT_DELAY_MS) : 2000;
+testConnection(_retries, _delay);
 
 module.exports = {
   pool,
