@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:dio/dio.dart';
 import '../services/api_client.dart';
 import '../models/moto.dart';
 import 'moto_detail.dart';
@@ -319,8 +320,15 @@ class _MotosListScreenState extends State<MotosListScreen> {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Cliente y moto creados')));
       } catch (e) {
+        String msg = e.toString();
+        if (e is DioException) {
+          try {
+            final resp = e.response?.data;
+            if (resp != null) msg = resp is String ? resp : resp.toString();
+          } catch (_) {}
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error creando cliente/moto: $e')));
+            SnackBar(content: Text('Error creando cliente/moto: $msg')));
       }
     }
   }

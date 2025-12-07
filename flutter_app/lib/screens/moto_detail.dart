@@ -2,6 +2,7 @@
 // generating invoice PDFs for a single service or for the whole moto.
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
+import 'package:dio/dio.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 
@@ -73,7 +74,10 @@ class _MotoDetailScreenState extends State<MotoDetailScreen> {
                       child: Image.network(
                         abs,
                         fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 96, color: Colors.white),
+                        errorBuilder: (_, __, ___) => const Icon(
+                            Icons.broken_image,
+                            size: 96,
+                            color: Colors.white),
                       ),
                     ),
                   ),
@@ -122,8 +126,15 @@ class _MotoDetailScreenState extends State<MotoDetailScreen> {
       snack.showSnackBar(SnackBar(content: Text('Factura guardada en: $path')));
       await OpenFile.open(path);
     } catch (e) {
-      snack
-          .showSnackBar(SnackBar(content: Text('Error generando factura: $e')));
+      String msg = e.toString();
+      if (e is DioException) {
+        try {
+          final resp = e.response?.data;
+          if (resp != null) msg = resp is String ? resp : resp.toString();
+        } catch (_) {}
+      }
+      snack.showSnackBar(
+          SnackBar(content: Text('Error generando factura: $msg')));
     }
   }
 
@@ -138,8 +149,15 @@ class _MotoDetailScreenState extends State<MotoDetailScreen> {
       snack.showSnackBar(SnackBar(content: Text('Factura guardada en: $path')));
       await OpenFile.open(path);
     } catch (e) {
-      snack
-          .showSnackBar(SnackBar(content: Text('Error generando factura: $e')));
+      String msg = e.toString();
+      if (e is DioException) {
+        try {
+          final resp = e.response?.data;
+          if (resp != null) msg = resp is String ? resp : resp.toString();
+        } catch (_) {}
+      }
+      snack.showSnackBar(
+          SnackBar(content: Text('Error generando factura: $msg')));
     }
   }
 
@@ -733,22 +751,21 @@ class _MotoDetailScreenState extends State<MotoDetailScreen> {
                                       height: 80,
                                       child: ListView.separated(
                                           scrollDirection: Axis.horizontal,
-                                            itemBuilder: (_, i) => AspectRatio(
+                                          itemBuilder: (_, i) => AspectRatio(
                                               aspectRatio: 4 / 3,
                                               child: Padding(
-                                                padding: const EdgeInsets.only(
-                                                  right: 6.0),
-                                                child: InkWell(
-                                                  onTap: () => _openImageViewer(images[i]),
-                                                  child: Image.network(
-                                                    _absImageUrl(images[i]),
-                                                    fit: BoxFit.cover,
-                                                    errorBuilder: (_, __,
-                                                        ___) =>
-                                                      Icon(Icons
-                                                        .broken_image))))),
-                                          separatorBuilder: (_, __) =>
-                                              SizedBox(width: 6),
+                                                  padding: const EdgeInsets.only(
+                                                      right: 6.0),
+                                                  child: InkWell(
+                                                      onTap: () => _openImageViewer(
+                                                          images[i]),
+                                                      child: Image.network(
+                                                          _absImageUrl(
+                                                              images[i]),
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder: (_, __, ___) =>
+                                                              Icon(Icons.broken_image))))),
+                                          separatorBuilder: (_, __) => SizedBox(width: 6),
                                           itemCount: images.length))
                               ]),
                           trailing: Row(

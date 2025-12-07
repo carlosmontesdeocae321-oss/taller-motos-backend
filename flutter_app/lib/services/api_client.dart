@@ -173,8 +173,36 @@ class ApiClient {
     });
 
     final bytes = resp.data as List<int>;
+    // Try to extract filename from Content-Disposition header if provided by server
+    String chosenName = filename;
+    try {
+      final cd = resp.headers.value('content-disposition');
+      if (cd != null) {
+        final parts = cd.split(';').map((s) => s.trim()).toList();
+        for (final p in parts) {
+          if (p.startsWith('filename*=')) {
+            var val = p.substring('filename*='.length);
+            // handle UTF-8''encoded names: UTF-8''name.pdf
+            final idx = val.indexOf("''");
+            if (idx != -1) val = val.substring(idx + 2);
+            if (val.startsWith('"') && val.endsWith('"'))
+              val = val.substring(1, val.length - 1);
+            chosenName = Uri.decodeFull(val);
+            break;
+          }
+          if (p.startsWith('filename=')) {
+            var val = p.substring('filename='.length);
+            if (val.startsWith('"') && val.endsWith('"'))
+              val = val.substring(1, val.length - 1);
+            chosenName = val;
+            break;
+          }
+        }
+      }
+    } catch (_) {}
+
     final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/$filename');
+    final file = File('${dir.path}/$chosenName');
     await file.writeAsBytes(bytes);
     return file.path;
   }
@@ -193,8 +221,35 @@ class ApiClient {
       if (onProgress != null) onProgress(received, total);
     });
     final bytes = resp.data as List<int>;
+    // Prefer filename from server Content-Disposition if present
+    String chosenName = filename;
+    try {
+      final cd = resp.headers.value('content-disposition');
+      if (cd != null) {
+        final parts = cd.split(';').map((s) => s.trim()).toList();
+        for (final p in parts) {
+          if (p.startsWith('filename*=')) {
+            var val = p.substring('filename*='.length);
+            final idx = val.indexOf("''");
+            if (idx != -1) val = val.substring(idx + 2);
+            if (val.startsWith('"') && val.endsWith('"'))
+              val = val.substring(1, val.length - 1);
+            chosenName = Uri.decodeFull(val);
+            break;
+          }
+          if (p.startsWith('filename=')) {
+            var val = p.substring('filename='.length);
+            if (val.startsWith('"') && val.endsWith('"'))
+              val = val.substring(1, val.length - 1);
+            chosenName = val;
+            break;
+          }
+        }
+      }
+    } catch (_) {}
+
     final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/$filename');
+    final file = File('${dir.path}/$chosenName');
     await file.writeAsBytes(bytes);
     return file.path;
   }
