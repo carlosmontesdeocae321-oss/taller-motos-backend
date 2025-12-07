@@ -621,9 +621,12 @@ app.post('/invoices', [
       let thumbHeight = 60;
       let thumbX = 50;
       let textX = 50;
+      // collect image list for this service so we can draw the first as thumbnail
+      // and the rest underneath (below the price) as requested
+      let imgs = [];
       try {
         if (s.image_path) {
-          const imgs = ('' + s.image_path).split(',').map(p => p.trim()).filter(Boolean);
+          imgs = ('' + s.image_path).split(',').map(p => p.trim()).filter(Boolean);
           const firstImg = imgs[0];
           if (firstImg) {
             let buf = null;
@@ -633,15 +636,15 @@ app.post('/invoices', [
               const local = path.join(__dirname, firstImg.startsWith('/') ? '.' + firstImg : firstImg);
               try { if (fs.existsSync(local)) buf = fs.readFileSync(local); } catch (e) { console.warn('Read local img failed', e && e.message ? e.message : e); }
             }
-              if (buf) {
-                try {
-                  // draw thumbnail on the left column
-                  doc.image(buf, thumbX + 10, y - 4, { width: thumbWidth, height: thumbHeight });
-                  usedThumbnail = true;
-                  // text should start after thumbnail + padding
-                  textX = thumbX + thumbWidth + 24;
-                } catch (e) { console.warn('Draw thumb failed', e && e.message ? e.message : e); }
-              }
+            if (buf) {
+              try {
+                // draw thumbnail on the left column
+                doc.image(buf, thumbX + 10, y - 4, { width: thumbWidth, height: thumbHeight });
+                usedThumbnail = true;
+                // text should start after thumbnail + padding
+                textX = thumbX + thumbWidth + 24;
+              } catch (e) { console.warn('Draw thumb failed', e && e.message ? e.message : e); }
+            }
           }
         }
       } catch (ie) { console.warn('Image processing error for service', s.id_servicio, ie && ie.message ? ie.message : ie); }
@@ -661,6 +664,40 @@ app.post('/invoices', [
       if (y > 700 && idx < services.length - 1) {
         doc.addPage();
         y = 50;
+      }
+
+      // If there are multiple images for this service, render the remaining
+      // images below the price/value as stacked thumbnails (one per row).
+      try {
+        if (imgs && imgs.length > 1) {
+          const remaining = imgs.slice(1);
+          const imgDisplayWidth = 240; // make these wider than the left thumbnail
+          const imgDisplayHeight = 160;
+          for (const imgPath of remaining) {
+            let buf2 = null;
+            if (imgPath.startsWith('http://') || imgPath.startsWith('https://')) {
+              try { buf2 = await fetchImageBuffer(imgPath); } catch (e) { console.warn('Fetch extra img failed', e && e.message ? e.message : e); }
+            } else {
+              const local2 = path.join(__dirname, imgPath.startsWith('/') ? '.' + imgPath : imgPath);
+              try { if (fs.existsSync(local2)) buf2 = fs.readFileSync(local2); } catch (e) { console.warn('Read extra local img failed', e && e.message ? e.message : e); }
+            }
+            if (buf2) {
+              // Ensure space for image; if near bottom, add new page
+              if (y + imgDisplayHeight + 20 > 780) {
+                doc.addPage();
+                y = 50;
+              }
+              try {
+                // center the image area horizontally
+                const imgX = 50;
+                doc.image(buf2, imgX, y, { width: imgDisplayWidth });
+                y += imgDisplayHeight + 12;
+              } catch (e) { console.warn('Draw extra img failed', e && e.message ? e.message : e); }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Error drawing extra images for service', s.id_servicio, e && e.message ? e.message : e);
       }
     }
 
