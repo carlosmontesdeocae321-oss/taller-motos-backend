@@ -14,7 +14,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Usar BASE_URL desde --dart-define, si no se define usa 10.0.2.2:3000 por defecto
-    String baseUrl = const String.fromEnvironment('BASE_URL', defaultValue: 'http://10.0.2.2:3000');
+    String baseUrl = const String.fromEnvironment('BASE_URL',
+        defaultValue: 'http://10.0.2.2:3000');
     final apiClient = ApiClient(baseUrl);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -26,7 +27,6 @@ class MyApp extends StatelessWidget {
           primary: const Color(0xFF6D3BFF),
           secondary: const Color(0xFFFFB86B),
           surface: const Color(0xFF2F3438),
-          background: const Color(0xFF222528),
         ),
         scaffoldBackgroundColor: const Color(0xFF1F2224),
         appBarTheme: const AppBarTheme(
