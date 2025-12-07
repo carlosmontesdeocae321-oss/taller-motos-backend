@@ -13,18 +13,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Determine base URL depending on platform:
-    // - Android emulator: 10.0.2.2
-    // - Web / Desktop (Windows/macOS/Linux): localhost
-    String baseUrl;
-    if (kIsWeb) {
-      baseUrl = 'http://localhost:3000';
-    } else if (defaultTargetPlatform == TargetPlatform.android) {
-      baseUrl = 'http://10.0.2.2:3000';
-    } else {
-      baseUrl = 'http://localhost:3000';
-    }
-
+    // Usar BASE_URL desde --dart-define, si no se define usa 10.0.2.2:3000 por defecto
+    String baseUrl = const String.fromEnvironment('BASE_URL', defaultValue: 'http://10.0.2.2:3000');
     final apiClient = ApiClient(baseUrl);
     return MaterialApp(
       debugShowCheckedModeBanner: false,

@@ -25,5 +25,5 @@ flutter:
 # Configuration for flutter_launcher_icons to set the Android launcher icon
 flutter_icons:
   android: true
-  ios: false
-  image_path: "../assets/logo.png"
+  ios: true
+  image_path: "assets/logo.png"
