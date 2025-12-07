@@ -526,66 +526,95 @@ app.post('/invoices', [
       });
     }
 
-    // generate single PDF that contains all services
+    // generate single PDF that contains all services (professional layout)
     const invoiceId = Date.now();
     const filename = `factura_${invoiceId}.pdf`;
     const filepath = path.join(INVOICES_DIR, filename);
 
-    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true });
     const writeStream = fs.createWriteStream(filepath);
     doc.pipe(writeStream);
 
-    // Logo (if exists)
-    if (fs.existsSync(LOGO_PATH)) {
-      try { doc.image(LOGO_PATH, 50, 45, { width: 120 }); } catch (e) { console.warn('No se pudo cargar el logo:', e.message); }
-    }
-
-    // Header
-    doc.fontSize(18).text('Taller de Motos Moreira Racing', 200, 50);
     const fechaHoy = new Date().toISOString().slice(0,10);
-    doc.fontSize(10).text(`Fecha: ${formatDateSpanish(fechaHoy)}`, 200, 75);
-    doc.moveDown(2);
 
-    // Use first service to populate client/moto info
+    // Header: logo left, title and meta right
+    if (fs.existsSync(LOGO_PATH)) {
+      try { doc.image(LOGO_PATH, 50, 50, { width: 100 }); } catch (e) { console.warn('Logo draw failed:', e.message); }
+    }
+    doc.fontSize(20).text('Taller de Motos Moreira Racing', 180, 55);
+    doc.fontSize(10).text(`Factura: ${invoiceId}`, 180, 80);
+    doc.fontSize(10).text(`Fecha: ${formatDateSpanish(fechaHoy)}`, 180, 95);
+
+    // small divider
+    doc.moveTo(50, 120).lineTo(545, 120).strokeColor('#dddddd').stroke();
+
+    // client and moto boxes
     const first = services[0];
-    doc.fontSize(12).text('Cliente:', 50, 140);
-    doc.fontSize(10).text(`${first.cliente_nombre}`, 50, 155);
-    doc.text(`Teléfono: ${first.telefono || '-'}`, 50, 170);
-    doc.text(`Dirección: ${first.direccion || '-'}`, 50, 185);
+    doc.rect(50, 130, 300, 80).stroke('#cccccc');
+    doc.fontSize(11).text('Cliente', 58, 136);
+    doc.fontSize(10).text(`${first.cliente_nombre || '-'}`, 58, 152);
+    doc.fontSize(9).text(`Tel: ${first.telefono || '-'}`, 58, 168);
+    doc.fontSize(9).text(`Dir: ${first.direccion || '-'}`, 58, 182);
 
-    doc.fontSize(12).text('Moto:', 350, 140);
-    doc.fontSize(10).text(`${first.marca || '-'} ${first.modelo || '-'}`, 350, 155);
-    doc.text(`Placa: ${first.placa || '-'}`, 350, 170);
+    doc.rect(370, 130, 225, 80).stroke('#cccccc');
+    doc.fontSize(11).text('Moto', 378, 136);
+    doc.fontSize(10).text(`${first.marca || '-'} ${first.modelo || '-'}`, 378, 152);
+    doc.fontSize(9).text(`Placa: ${first.placa || '-'}`, 378, 168);
 
-    // Service table
-    doc.moveDown(4);
-    doc.fontSize(12).text('Detalle de servicios', 50, 220);
-    doc.moveDown(0.5);
-
-    let y = doc.y;
-    doc.fontSize(10);
+    // Services list with optional thumbnail at right
+    let y = 220;
+    doc.fontSize(12).text('Detalle de servicios', 50, y - 14);
     let grandTotal = 0.0;
-    services.forEach((s, idx) => {
-      const dateOnly = (s.fecha || '').toString().split('T')[0].split(' ')[0].substring(0,10);
-      const displayDate = formatDateSpanish(dateOnly);
+
+    for (let idx = 0; idx < services.length; idx++) {
+      const s = services[idx];
       const costo = Number(s.costo || 0);
       grandTotal += costo;
-      doc.text(`${idx+1}. ${s.descripcion}`, 50, y, { width: 350 });
-      doc.text(`Fecha: ${displayDate}`, 410, y);
-      y += 14;
-      doc.text(`Precio: $ ${costo.toFixed(2)}`, 410, y);
-      y += 20;
-      if (y > 700) { doc.addPage(); y = 50; }
-    });
 
-    // Totals
-    doc.moveDown(2);
-    doc.fontSize(12).text('Total:', 400, y + 10);
-    doc.fontSize(14).text(`$ ${grandTotal.toFixed(2)}`, 460, y + 5);
+      const dateOnly = (s.fecha || '').toString().split('T')[0].split(' ')[0].substring(0,10);
+      const displayDate = formatDateSpanish(dateOnly);
 
-    // Footer
-    doc.moveTo(50, 760).lineTo(545, 760).stroke();
-    doc.fontSize(8).text('Taller de Motos Moreira Racing - Gracias por confiar en nosotros', 50, 770);
+      // description block
+      doc.fontSize(10).fillColor('#000').text(`${idx+1}. ${s.descripcion || '-'}`, 50, y, { width: 360 });
+      doc.fontSize(9).fillColor('#555').text(`Fecha: ${displayDate}`, 420, y);
+      doc.fontSize(10).fillColor('#000').text(`Precio: $ ${costo.toFixed(2)}`, 420, y + 14);
+
+      // thumbnail handling
+      if (s.image_path) {
+        try {
+          const imgs = ('' + s.image_path).split(',').map(p => p.trim()).filter(Boolean);
+          const firstImg = imgs[0];
+          if (firstImg) {
+            let buf = null;
+            if (firstImg.startsWith('http://') || firstImg.startsWith('https://')) {
+              try { buf = await fetchImageBuffer(firstImg); } catch (e) { console.warn('Fetch img failed', e.message); }
+            } else {
+              const local = path.join(__dirname, firstImg.startsWith('/') ? '.' + firstImg : firstImg);
+              try { if (fs.existsSync(local)) buf = fs.readFileSync(local); } catch (e) { console.warn('Read local img failed', e.message); }
+            }
+            if (buf) {
+              try { doc.image(buf, 480, y - 2, { width: 80, height: 60, align: 'right' }); } catch (e) { console.warn('Draw thumb failed', e.message); }
+            }
+          }
+        } catch (ie) { console.warn('Image processing error for service', s.id_servicio, ie.message || ie); }
+      }
+
+      y += 76; // leave space for thumbnail
+      if (y > 720) { doc.addPage(); y = 50; }
+    }
+
+    // Totals box
+    doc.rect(360, y, 185, 60).stroke('#cccccc');
+    doc.fontSize(12).text('Total', 370, y + 10);
+    doc.fontSize(18).text(`$ ${grandTotal.toFixed(2)}`, 430, y + 8);
+
+    // Footer and page numbers
+    const range = doc.bufferedPageRange();
+    for (let i = 0; i < range.count; i++) {
+      doc.switchToPage(i);
+      doc.fontSize(8).fillColor('#777').text('Taller de Motos Moreira Racing - Gracias por confiar en nosotros', 50, 780, { align: 'center', width: 495 });
+      doc.fontSize(8).text(`Página ${i + 1} de ${range.count}`, 50, 792, { align: 'center', width: 495 });
+    }
 
     doc.end();
 
