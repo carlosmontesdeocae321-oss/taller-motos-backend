@@ -653,7 +653,13 @@ app.post('/invoices', [
 
       // advance Y: leave extra space if thumbnail drawn
       y += usedThumbnail ? Math.max(thumbHeight + 18, 76) : 34;
-      if (y > 700) { doc.addPage(); y = 50; }
+      // Only add a new page if there are more services to render. This avoids
+      // creating a trailing blank page when the last service exactly overflows
+      // the current page boundary.
+      if (y > 700 && idx < services.length - 1) {
+        doc.addPage();
+        y = 50;
+      }
     }
 
     // Separator and totals aligned to right
