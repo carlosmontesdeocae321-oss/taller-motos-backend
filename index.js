@@ -615,49 +615,23 @@ app.post('/invoices', [
       const dateOnly = (s.fecha || '').toString().split('T')[0].split(' ')[0].substring(0,10);
       const displayDate = formatDateSpanish(dateOnly);
 
-      // If an image exists for this service, try to embed a thumbnail at the left
-      let usedThumbnail = false;
-      let thumbWidth = 80;
-      let thumbHeight = 60;
-      let thumbX = 50;
-      let textX = 50;
-      // collect image list for this service so we can draw the first as thumbnail
-      // and the rest underneath (below the price) as requested
+      // Collect images list for this service. Description is shown as text only;
+      // images will be rendered below the price in a grid (two per row).
       let imgs = [];
       try {
-        if (s.image_path) {
-          imgs = ('' + s.image_path).split(',').map(p => p.trim()).filter(Boolean);
-          const firstImg = imgs[0];
-          if (firstImg) {
-            let buf = null;
-            if (firstImg.startsWith('http://') || firstImg.startsWith('https://')) {
-              try { buf = await fetchImageBuffer(firstImg); } catch (e) { console.warn('Fetch img failed', e && e.message ? e.message : e); }
-            } else {
-              const local = path.join(__dirname, firstImg.startsWith('/') ? '.' + firstImg : firstImg);
-              try { if (fs.existsSync(local)) buf = fs.readFileSync(local); } catch (e) { console.warn('Read local img failed', e && e.message ? e.message : e); }
-            }
-            if (buf) {
-              try {
-                // draw thumbnail on the left column
-                doc.image(buf, thumbX + 10, y - 4, { width: thumbWidth, height: thumbHeight });
-                usedThumbnail = true;
-                // text should start after thumbnail + padding
-                textX = thumbX + thumbWidth + 24;
-              } catch (e) { console.warn('Draw thumb failed', e && e.message ? e.message : e); }
-            }
-          }
-        }
-      } catch (ie) { console.warn('Image processing error for service', s.id_servicio, ie && ie.message ? ie.message : ie); }
+        if (s.image_path) imgs = ('' + s.image_path).split(',').map(p => p.trim()).filter(Boolean);
+      } catch (ie) { console.warn('Image list parse error for service', s.id_servicio, ie && ie.message ? ie.message : ie); }
 
-      // Description left (shifted if thumbnail present)
-      const descWidth = usedThumbnail ? 360 - thumbWidth : 360;
+      // Description: full text only (no inline thumbnails)
+      const textX = 50;
+      const descWidth = 360;
       doc.font('Helvetica').fontSize(10).fillColor('#000').text(`${idx+1}. ${s.descripcion || '-'}`, textX, y, { width: descWidth });
       // Date and price to the right
       doc.font('Helvetica').fontSize(9).fillColor('#444').text(`Fecha: ${displayDate}`, 420, y);
       doc.font('Helvetica').fontSize(10).fillColor('#000').text(`Precio: $ ${costo.toFixed(2)}`, 420, y + 14);
 
-      // advance Y: leave extra space if thumbnail drawn
-      y += usedThumbnail ? Math.max(thumbHeight + 18, 76) : 34;
+      // advance Y after description/price
+      y += 34;
       // Only add a new page if there are more services to render. This avoids
       // creating a trailing blank page when the last service exactly overflows
       // the current page boundary.
@@ -665,39 +639,52 @@ app.post('/invoices', [
         doc.addPage();
         y = 50;
       }
-
-      // If there are multiple images for this service, render the remaining
-      // images below the price/value as stacked thumbnails (one per row).
+      // Render images (if any) below the price in a grid: 2 images per row
       try {
-        if (imgs && imgs.length > 1) {
-          const remaining = imgs.slice(1);
-          const imgDisplayWidth = 240; // make these wider than the left thumbnail
-          const imgDisplayHeight = 160;
-          for (const imgPath of remaining) {
+        if (imgs && imgs.length > 0) {
+          const imgDisplayWidth = 240;
+          const imgDisplayHeight = 140;
+          const perRow = 2;
+          const marginLeft = 50;
+          const spacing = 20;
+          let col = 0;
+          let drawnAny = false;
+          for (const imgPath of imgs) {
             let buf2 = null;
             if (imgPath.startsWith('http://') || imgPath.startsWith('https://')) {
-              try { buf2 = await fetchImageBuffer(imgPath); } catch (e) { console.warn('Fetch extra img failed', e && e.message ? e.message : e); }
+              try { buf2 = await fetchImageBuffer(imgPath); } catch (e) { console.warn('Fetch image failed', e && e.message ? e.message : e); }
             } else {
               const local2 = path.join(__dirname, imgPath.startsWith('/') ? '.' + imgPath : imgPath);
-              try { if (fs.existsSync(local2)) buf2 = fs.readFileSync(local2); } catch (e) { console.warn('Read extra local img failed', e && e.message ? e.message : e); }
+              try { if (fs.existsSync(local2)) buf2 = fs.readFileSync(local2); } catch (e) { console.warn('Read local image failed', e && e.message ? e.message : e); }
             }
-            if (buf2) {
-              // Ensure space for image; if near bottom, add new page
+            if (!buf2) continue;
+            // If starting a new row, ensure space on page
+            if (col === 0) {
               if (y + imgDisplayHeight + 20 > 780) {
                 doc.addPage();
                 y = 50;
               }
-              try {
-                // center the image area horizontally
-                const imgX = 50;
-                doc.image(buf2, imgX, y, { width: imgDisplayWidth });
-                y += imgDisplayHeight + 12;
-              } catch (e) { console.warn('Draw extra img failed', e && e.message ? e.message : e); }
             }
+            const imgX = marginLeft + col * (imgDisplayWidth + spacing);
+            try {
+              doc.image(buf2, imgX, y, { width: imgDisplayWidth, height: imgDisplayHeight });
+              drawnAny = true;
+            } catch (e) { console.warn('Draw grid image failed', e && e.message ? e.message : e); }
+            col++;
+            if (col >= perRow) {
+              col = 0;
+              y += imgDisplayHeight + 12;
+            }
+          }
+          if (col !== 0) {
+            // finished a partial row
+            y += imgDisplayHeight + 12;
+          } else if (!drawnAny) {
+            // nothing drawn -> no change
           }
         }
       } catch (e) {
-        console.warn('Error drawing extra images for service', s.id_servicio, e && e.message ? e.message : e);
+        console.warn('Error drawing images for service', s.id_servicio, e && e.message ? e.message : e);
       }
     }
 
