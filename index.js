@@ -416,49 +416,49 @@ app.put('/services/:id', uploadMiddleware, [
   const { id_moto, descripcion, fecha, costo } = req.body;
   const completed = req.body.completed !== undefined ? (req.body.completed ? 1 : 0) : null;
   try {
-    // handle image updates: allow client to provide new image (multipart) or set image_path explicitly
-    let imagePath = null;
-    // if client sent an explicit image_path (after removing some images), honor it
-    if (req.body.image_path) {
-      imagePath = req.body.image_path;
+    // handle image updates: detect whether client explicitly provided `image_path`
+    // If the client sent `image_path` (even as empty string), treat that as an explicit request
+    // to set/clear the field. If not provided, image updates from uploaded file will be appended.
+    let imagePathProvided = false;
+    let imagePathValue = undefined; // undefined means "not provided"
+    if (Object.prototype.hasOwnProperty.call(req.body, 'image_path')) {
+      imagePathProvided = true;
+      // empty string -> clear (null), otherwise keep the provided value
+      imagePathValue = (req.body.image_path === '' ? null : req.body.image_path);
     }
 
     // If a file was uploaded, process it: upload to cloudinary if configured, else store local path
+    // The result will be placed in `uploadedImagePath` (undefined if none)
+    let uploadedImagePath = undefined;
     if (req.file) {
       try {
+        let newImg = null;
         if (cloudinaryEnabled && req.file && req.file.path) {
           const uploadRes = await cloudinaryHelper.uploadLocalFile(req.file.path, { folder: 'taller-motos/services' });
-          if (uploadRes && uploadRes.secure_url) {
-            const newUrl = uploadRes.secure_url;
-            // append to existing imagePath if present, otherwise set to newUrl
-            if (imagePath && imagePath.length > 0) imagePath = imagePath + ',' + newUrl;
-            else {
-              // fetch existing path to append
-              try {
-                const rows = await query('SELECT image_path FROM servicios WHERE id_servicio = ?', [id]);
-                const existing = (rows && rows[0] && rows[0].image_path) ? rows[0].image_path : null;
-                imagePath = existing ? existing + ',' + newUrl : newUrl;
-              } catch (ee) {
-                imagePath = newUrl;
-              }
-            }
-          }
+          if (uploadRes && uploadRes.secure_url) newImg = uploadRes.secure_url;
           try { fs.unlinkSync(req.file.path); } catch (er) {}
         } else {
-          const localPath = `/uploads/services/${req.file.filename}`;
-          if (imagePath && imagePath.length > 0) imagePath = imagePath + ',' + localPath;
-          else {
+          newImg = `/uploads/services/${req.file.filename}`;
+        }
+
+        if (newImg) {
+          if (imagePathProvided) {
+            // client explicitly provided a base value for image_path — honor it and append new image if base is non-empty
+            if (imagePathValue && imagePathValue.length > 0) uploadedImagePath = imagePathValue + ',' + newImg;
+            else uploadedImagePath = newImg;
+          } else {
+            // no explicit instruction: fetch existing and append
             try {
               const rows = await query('SELECT image_path FROM servicios WHERE id_servicio = ?', [id]);
               const existing = (rows && rows[0] && rows[0].image_path) ? rows[0].image_path : null;
-              imagePath = existing ? existing + ',' + localPath : localPath;
+              uploadedImagePath = existing ? existing + ',' + newImg : newImg;
             } catch (ee) {
-              imagePath = localPath;
+              uploadedImagePath = newImg;
             }
           }
         }
       } catch (e) {
-        console.warn('Error processing uploaded file for update:', e.message);
+        console.warn('Error processing uploaded file for update:', e && e.message ? e.message : e);
       }
     }
 
@@ -469,12 +469,27 @@ app.put('/services/:id', uploadMiddleware, [
     const costoParam = (typeof costo !== 'undefined') ? costo : null;
     const completedParam = (typeof completed !== 'undefined') ? completed : null;
 
-    if (imagePath !== null) {
-      const imageParam = imagePath;
+    // Determine final image parameter:
+    // If client explicitly provided image_path, honor that (may be null to clear), but if an uploadedImagePath exists prefer it.
+    let finalImageParam = undefined;
+    if (imagePathProvided) {
+      finalImageParam = (typeof uploadedImagePath !== 'undefined') ? uploadedImagePath : imagePathValue;
+    } else {
+      if (typeof uploadedImagePath !== 'undefined') finalImageParam = uploadedImagePath;
+    }
+
+    if (imagePathProvided) {
+      // explicit set/clear: set image_path to finalImageParam (can be null)
+      const sql = `UPDATE servicios SET id_moto = COALESCE(?, id_moto), descripcion = COALESCE(?, descripcion), fecha = COALESCE(?, fecha), costo = COALESCE(?, costo), completed = COALESCE(?, completed), image_path = ? WHERE id_servicio = ?`;
+      const result = await execute(sql, [idMotoParam, descripcionParam, fechaParam, costoParam, completedParam, finalImageParam, id]);
+      res.json({ affectedRows: result.affectedRows });
+    } else if (typeof finalImageParam !== 'undefined') {
+      // we have a new uploaded image and client didn't explicitly touch image_path -> set/append
       const sql = `UPDATE servicios SET id_moto = COALESCE(?, id_moto), descripcion = COALESCE(?, descripcion), fecha = COALESCE(?, fecha), costo = COALESCE(?, costo), completed = COALESCE(?, completed), image_path = COALESCE(?, image_path) WHERE id_servicio = ?`;
-      const result = await execute(sql, [idMotoParam, descripcionParam, fechaParam, costoParam, completedParam, imageParam, id]);
+      const result = await execute(sql, [idMotoParam, descripcionParam, fechaParam, costoParam, completedParam, finalImageParam, id]);
       res.json({ affectedRows: result.affectedRows });
     } else {
+      // don't touch image_path
       const sql = `UPDATE servicios SET id_moto = COALESCE(?, id_moto), descripcion = COALESCE(?, descripcion), fecha = COALESCE(?, fecha), costo = COALESCE(?, costo), completed = COALESCE(?, completed) WHERE id_servicio = ?`;
       const result = await execute(sql, [idMotoParam, descripcionParam, fechaParam, costoParam, completedParam, id]);
       res.json({ affectedRows: result.affectedRows });
@@ -616,15 +631,15 @@ app.post('/invoices', [
               const local = path.join(__dirname, firstImg.startsWith('/') ? '.' + firstImg : firstImg);
               try { if (fs.existsSync(local)) buf = fs.readFileSync(local); } catch (e) { console.warn('Read local img failed', e && e.message ? e.message : e); }
             }
-            if (buf) {
-              try {
-                // draw thumbnail on the left column
-                doc.image(buf, thumbX + 10, y - 4, { width: thumbWidth, height: thumbHeight });
-                usedThumbnail = true;
-                // text should start after thumbnail + padding
-                textX = thumbX + thumbWidth + 24;
-              } catch (e) { console.warn('Draw thumb failed', e && e.message ? e.message : e); }
-            }
+              if (buf) {
+                try {
+                  // draw thumbnail on the left column
+                  doc.image(buf, thumbX + 10, y - 4, { width: thumbWidth, height: thumbHeight });
+                  usedThumbnail = true;
+                  // text should start after thumbnail + padding
+                  textX = thumbX + thumbWidth + 24;
+                } catch (e) { console.warn('Draw thumb failed', e && e.message ? e.message : e); }
+              }
           }
         }
       } catch (ie) { console.warn('Image processing error for service', s.id_servicio, ie && ie.message ? ie.message : ie); }
