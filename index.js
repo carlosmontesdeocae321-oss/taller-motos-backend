@@ -683,18 +683,21 @@ app.post('/invoices', [
         for (const s of services) {
           await execute('INSERT INTO facturas (id_servicio, fecha, total, pdf_path) VALUES (?, ?, ?, ?)', [s.id_servicio, fechaHoy, s.costo, filepath]);
         }
-        res.download(filepath, filename, (err) => { if (err) console.error('Error sending file', err); });
+        res.download(filepath, filename, (err) => { if (err) console.error('Error sending file', err && err.stack ? err.stack : err); });
       } catch (ie) {
-        console.error('Error saving factura records', ie);
-        res.status(500).json({ error: 'error saving factura records' });
+        console.error('Error saving factura records', ie && ie.stack ? ie.stack : ie);
+        res.status(500).json({ error: 'error saving factura records', detail: ie && ie.message ? ie.message : String(ie) });
       }
     });
 
-    writeStream.on('error', (err) => { console.error('Error writing PDF', err); res.status(500).json({ error: 'error generating pdf' }); });
+    writeStream.on('error', (err) => {
+      console.error('Error writing PDF', err && err.stack ? err.stack : err);
+      res.status(500).json({ error: 'error generating pdf', detail: err && err.message ? err.message : String(err) });
+    });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'error generating invoice' });
+    console.error('Unhandled error in /invoices', err && err.stack ? err.stack : err);
+    res.status(500).json({ error: 'error generating invoice', detail: err && err.message ? err.message : String(err) });
   }
 });
 
