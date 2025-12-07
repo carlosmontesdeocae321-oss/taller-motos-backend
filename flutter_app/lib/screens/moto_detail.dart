@@ -52,6 +52,45 @@ class _MotoDetailScreenState extends State<MotoDetailScreen> {
     return base.endsWith('/') ? base + url : base + '/' + url;
   }
 
+  void _openImageViewer(String url) {
+    final abs = _absImageUrl(url);
+    showDialog(
+        context: context,
+        builder: (ctx) {
+          return Dialog(
+            insetPadding: const EdgeInsets.all(12.0),
+            child: Container(
+              width: double.infinity,
+              height: MediaQuery.of(context).size.height * 0.8,
+              color: Colors.black,
+              child: Stack(
+                children: [
+                  Center(
+                    child: InteractiveViewer(
+                      panEnabled: true,
+                      minScale: 1.0,
+                      maxScale: 5.0,
+                      child: Image.network(
+                        abs,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 96, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                      top: 8,
+                      right: 8,
+                      child: IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ))
+                ],
+              ),
+            ),
+          );
+        });
+  }
+
   Future<List<Map<String, dynamic>>> _loadServices() async {
     final all = await widget.apiClient.getServices();
     final list = (all.cast<Map<String, dynamic>>()).where((s) {
@@ -694,18 +733,20 @@ class _MotoDetailScreenState extends State<MotoDetailScreen> {
                                       height: 80,
                                       child: ListView.separated(
                                           scrollDirection: Axis.horizontal,
-                                          itemBuilder: (_, i) => AspectRatio(
+                                            itemBuilder: (_, i) => AspectRatio(
                                               aspectRatio: 4 / 3,
                                               child: Padding(
-                                                  padding: const EdgeInsets.only(
-                                                      right: 6.0),
+                                                padding: const EdgeInsets.only(
+                                                  right: 6.0),
+                                                child: InkWell(
+                                                  onTap: () => _openImageViewer(images[i]),
                                                   child: Image.network(
-                                                      _absImageUrl(images[i]),
-                                                      fit: BoxFit.cover,
-                                                      errorBuilder: (_, __,
-                                                              ___) =>
-                                                          Icon(Icons
-                                                              .broken_image)))),
+                                                    _absImageUrl(images[i]),
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (_, __,
+                                                        ___) =>
+                                                      Icon(Icons
+                                                        .broken_image))))),
                                           separatorBuilder: (_, __) =>
                                               SizedBox(width: 6),
                                           itemCount: images.length))
