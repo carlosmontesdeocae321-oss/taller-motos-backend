@@ -462,12 +462,21 @@ app.put('/services/:id', uploadMiddleware, [
       }
     }
 
-    // Build update query. If imagePath is null, don't update image_path column.
+    // Build update query. Use COALESCE for optional fields and ensure we don't pass `undefined` to the driver.
+    const idMotoParam = (typeof id_moto !== 'undefined') ? id_moto : null;
+    const descripcionParam = (typeof descripcion !== 'undefined') ? descripcion : null;
+    const fechaParam = (typeof fecha !== 'undefined') ? fecha : null;
+    const costoParam = (typeof costo !== 'undefined') ? costo : null;
+    const completedParam = (typeof completed !== 'undefined') ? completed : null;
+
     if (imagePath !== null) {
-      const result = await execute('UPDATE servicios SET id_moto = ?, descripcion = ?, fecha = ?, costo = ?, completed = COALESCE(?, completed), image_path = ? WHERE id_servicio = ?', [id_moto, descripcion, fecha, costo, completed, imagePath, id]);
+      const imageParam = imagePath;
+      const sql = `UPDATE servicios SET id_moto = COALESCE(?, id_moto), descripcion = COALESCE(?, descripcion), fecha = COALESCE(?, fecha), costo = COALESCE(?, costo), completed = COALESCE(?, completed), image_path = COALESCE(?, image_path) WHERE id_servicio = ?`;
+      const result = await execute(sql, [idMotoParam, descripcionParam, fechaParam, costoParam, completedParam, imageParam, id]);
       res.json({ affectedRows: result.affectedRows });
     } else {
-      const result = await execute('UPDATE servicios SET id_moto = ?, descripcion = ?, fecha = ?, costo = ?, completed = COALESCE(?, completed) WHERE id_servicio = ?', [id_moto, descripcion, fecha, costo, completed, id]);
+      const sql = `UPDATE servicios SET id_moto = COALESCE(?, id_moto), descripcion = COALESCE(?, descripcion), fecha = COALESCE(?, fecha), costo = COALESCE(?, costo), completed = COALESCE(?, completed) WHERE id_servicio = ?`;
+      const result = await execute(sql, [idMotoParam, descripcionParam, fechaParam, costoParam, completedParam, id]);
       res.json({ affectedRows: result.affectedRows });
     }
   } catch (err) {
