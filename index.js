@@ -48,6 +48,19 @@ async function ensureServiceColumns() {
       console.log('Adding image_path column to servicios');
       await execute("ALTER TABLE servicios ADD COLUMN image_path VARCHAR(500) DEFAULT NULL");
     }
+    // Ensure descripcion column can hold long text (change to TEXT if currently shorter)
+    try {
+      const descCol = await query("SHOW COLUMNS FROM servicios LIKE 'descripcion'");
+      if (descCol && descCol[0] && descCol[0].Type) {
+        const type = ('' + descCol[0].Type).toLowerCase();
+        if (!type.includes('text')) {
+          console.log('Altering servicios.descripcion to TEXT to allow long descriptions');
+          await execute("ALTER TABLE servicios MODIFY COLUMN descripcion TEXT NOT NULL");
+        }
+      }
+    } catch (e) {
+      console.warn('Could not ensure descripcion column type:', e && e.message ? e.message : e);
+    }
   } catch (e) {
     console.warn('Could not ensure service columns:', e.message);
   }
