@@ -710,8 +710,12 @@ app.post('/invoices', [
     const range = doc.bufferedPageRange();
     for (let i = 0; i < range.count; i++) {
       doc.switchToPage(i);
-      doc.font('Helvetica').fontSize(8).fillColor('#777').text('Taller de Motos Moreira Racing - Gracias por confiar en nosotros', 50, 780, { align: 'center', width: 495 });
-      doc.fontSize(8).text(`Página ${i + 1} de ${range.count}`, 50, 792, { align: 'center', width: 495 });
+      // compute footer positions relative to page height to avoid hard-coded values
+      const pageH = doc.page.height || 842;
+      const footerY = Math.max(40, pageH - 60);
+      const pageNumY = Math.max(28, pageH - 48);
+      doc.font('Helvetica').fontSize(8).fillColor('#777').text('Taller de Motos Moreira Racing - Gracias por confiar en nosotros', 50, footerY, { align: 'center', width: 495 });
+      doc.fontSize(8).text(`Página ${i + 1} de ${range.count}`, 50, pageNumY, { align: 'center', width: 495 });
     }
 
     doc.end();
