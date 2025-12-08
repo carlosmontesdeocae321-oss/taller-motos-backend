@@ -181,12 +181,16 @@ class _MotoDetailScreenState extends State<MotoDetailScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      TextFormField(
+                        TextFormField(
                           controller: descCtrl,
                           decoration: InputDecoration(labelText: 'Descripción'),
+                          keyboardType: TextInputType.multiline,
+                          minLines: 3,
+                          maxLines: 8,
+                          textInputAction: TextInputAction.newline,
                           validator: (v) => (v == null || v.trim().isEmpty)
-                              ? 'Descripción requerida'
-                              : null),
+                            ? 'Descripción requerida'
+                            : null),
                       TextFormField(
                           controller: costoCtrl,
                           decoration: InputDecoration(labelText: 'Costo'),
@@ -338,12 +342,16 @@ class _MotoDetailScreenState extends State<MotoDetailScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      TextFormField(
+                        TextFormField(
                           controller: descripcionCtrl,
                           decoration: InputDecoration(labelText: 'Descripción'),
+                          keyboardType: TextInputType.multiline,
+                          minLines: 3,
+                          maxLines: 8,
+                          textInputAction: TextInputAction.newline,
                           validator: (v) => (v == null || v.trim().isEmpty)
-                              ? 'Descripción requerida'
-                              : null),
+                            ? 'Descripción requerida'
+                            : null),
                       TextFormField(
                           controller: costoCtrl,
                           decoration: InputDecoration(labelText: 'Costo'),
@@ -740,11 +748,11 @@ class _MotoDetailScreenState extends State<MotoDetailScreen> {
                               .toList();
                         }
                         return ListTile(
-                          title: Text(descripcion.toString()),
+                          title: Text(descripcion.toString(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
                           subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Fecha: $fecha  •  Precio: $costo'),
+                                Text('Fecha: $fecha  •  Precio: $costo', style: const TextStyle(fontSize: 13)),
                                 if (images.isNotEmpty) SizedBox(height: 8),
                                 if (images.isNotEmpty)
                                   SizedBox(

@@ -54,12 +54,16 @@ class _MotosListScreenState extends State<MotosListScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      TextFormField(
+                        TextFormField(
                           controller: descCtrl,
                           decoration: InputDecoration(labelText: 'Descripción'),
+                          keyboardType: TextInputType.multiline,
+                          minLines: 3,
+                          maxLines: 8,
+                          textInputAction: TextInputAction.newline,
                           validator: (v) => (v == null || v.trim().isEmpty)
-                              ? 'Descripción requerida'
-                              : null),
+                            ? 'Descripción requerida'
+                            : null),
                       TextFormField(
                           controller: costoCtrl,
                           decoration: InputDecoration(labelText: 'Costo'),
